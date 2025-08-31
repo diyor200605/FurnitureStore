@@ -24,6 +24,21 @@ def init_db():
     )''')
     conn.commit()
     conn.close()
+
+    def add_user(tg_id, name, password):
+        conn = sqlite3.connect('shop.db')
+        cur = conn.cursor()
+        cur.execute('''INSERT INTO users (tg_id, name, password) VALUES (?, ?, ?)''', (tg_id, name, password))
+        conn.commit()
+        conn.close()
+
+    def get_user(tg_id):
+        conn = sqlite.connect('shop.db')
+        cur = conn.cursor()
+        cur.execute('''SELECT * FROM users WHERE tg_id = ?''', (tg_id,))
+        user = cur.fetchone()
+        conn.close()
+        return user
         
             
     
