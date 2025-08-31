@@ -15,6 +15,9 @@ token = "8269993752:AAGkdNjJmpZOJaefXhIugWwpIXhiCCzOHqE"
 bot = Bot(token=token)
 dp = Dispatcher()
 
+init_db()
+
+sessions = {}
 
 @dp.message(CommandStart())
 async def start(message: Message):
@@ -54,10 +57,49 @@ async def login_password(message: Message, state: FSMContext):
     data = await state.get_data()
     user = get_user(message.from_user.id)
     if user and user[2] == data["name"] and user[3] == message.text:
-        await message.answer("Вход выполнен успешно!")
+        await message.answer("Вход выполнен успешно!", reply_markup=main_menu)
         await state.clear()
     else:
         await message.answer("Неверный логин или пароль!")
+    
+@dp.message(Command("shop"))
+async def shop(message: Message):
+    if message.from_user.id not in sessions:
+        return await message.answer("Вы не авторизованы! /login")
+    await message.answer("Выберите дизайн:", reply_markup=designs)
+    await state.set_state(Shop.design)
+
+@dp.callback_query(Shop.design)
+async def choose_design(callback: CallbackQuery, state: FSMContext):
+    design = callback.data.split(":")[1]
+    await state.update_data(design=design)
+    await callback.message.edit_text("Вы выбрали дизайн: {design}\nВыберите цвет: ", reply_markup=colors)
+    await state.set_state(Shop.color)
+    
+@dp.callback_query(Shop.color)
+async def choose_color(callback: CallbackQuery, state: FSMContext):
+    color = callback.data.split(":")[1]
+    await state.update_data(color=color)
+    await callback.message.edit_text("Вы выбрали цвет: {color}\nВыберите размер: ", reply_markup=sizes)
+    await state.set_state(Shop.size)
+    
+@dp.callback_query(Shop.size)
+async def choose_size(callback: CallbackQuery, state: FSMContext):
+    size = callback.data.split(":")[1]
+    await state.update_data(size=size)
+    await callback.message.edit_text("Вы выбрали размер: {size}",reply_markup=confirm)
+    await state.set_state(Shop.design)
+    
+@dp.callback_query(Shop.confirm)
+async def confirm_order(callback: CallbackQuery, state: FSMContext):
+    if callback.data == "confirm:yes":
+        data = await state.get_data()
+        add_cart(callback.from_user.id, "Кресло", data["color"], data["size"], data["design"], 1000)
+        await callback.message.edit_text("Заказ добавлен в корзину!")
+    else:
+        await callback.message.edit_text("Заказ отменен!")
+    await state.clear()
+    
     
 
 async def main():
